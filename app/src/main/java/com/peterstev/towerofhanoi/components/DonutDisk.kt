@@ -18,10 +18,13 @@ import androidx.compose.ui.unit.dp
 fun DonutDisk(
     outerRadius: Float,
     textValue: String,
+    modifier: Modifier = Modifier,
 ) {
     val innerRadiusRatio = 0.3f
+
     Box(
-        modifier = Modifier.wrapContentHeight(),
+        modifier = modifier
+            .wrapContentHeight(),
         contentAlignment = Alignment.Center
     ) {
         Canvas(

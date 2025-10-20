@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,7 +29,7 @@ import kotlin.math.hypot
 @Composable
 fun WinRippleOverlay(
     color: Color = Color(0xFF4CAF50),
-    text: String = "🎉 Congratulations! You beat the game!",
+    text: String,
     visible: Boolean = false,
     onAnimationComplete: () -> Unit
 ) {
@@ -39,13 +39,13 @@ fun WinRippleOverlay(
     val radius = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
 
-    val screenSize = LocalConfiguration.current
+    val screenSize = LocalWindowInfo.current
     val density = LocalDensity.current
 
     val maxRadius = with(density) {
         hypot(
-            screenSize.screenWidthDp.dp.toPx(),
-            screenSize.screenHeightDp.dp.toPx()
+            screenSize.containerSize.width.dp.toPx(),
+            screenSize.containerSize.height.dp.toPx()
         )
     }
 
@@ -79,7 +79,7 @@ fun WinRippleOverlay(
             drawCircle(
                 color = color,
                 radius = radius.value,
-                center = Offset(size.width, size.height), // bottom-right origin
+                center = Offset(size.width, size.height),
                 alpha = alpha.value
             )
         }

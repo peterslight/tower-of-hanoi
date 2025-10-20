@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import com.peterstev.towerofhanoi.states.Disk
 
@@ -16,6 +18,13 @@ import com.peterstev.towerofhanoi.states.Disk
 fun Tower(
     disks: List<Disk>,
     onTap: () -> Unit,
+    index: Int,
+    pendingFrom: Int?,
+    pendingTo: Int?,
+    targetTowerDiskCount: Int?,
+    onMoveAnimationDone: () -> Unit,
+    reportCenterX: (Float) -> Unit,
+    singleGapPx: Float,
 ) {
     val rawDiskSize = 120
     val diskSize = rawDiskSize.dp
@@ -25,7 +34,12 @@ fun Tower(
 
     Box(
         modifier = Modifier
-            .wrapContentHeight(),
+            .wrapContentHeight()
+            .onGloballyPositioned { coords ->
+                val tl = coords.positionInRoot()
+                val cx = tl.x + coords.size.width / 2f
+                reportCenterX(cx)
+            },
         contentAlignment = Alignment.BottomCenter
     ) {
         TiltedGear(Modifier.size(diskSize))
@@ -36,6 +50,12 @@ fun Tower(
                 .offset(y = offsetHeight),
             disks = disks,
             onTap = onTap,
+            originStickIndex = index,
+            pendingFrom = pendingFrom,
+            pendingTo = pendingTo,
+            targetTowerDiskCount = targetTowerDiskCount,
+            travelUnitPx = singleGapPx,
+            onMoveAnimationDone = onMoveAnimationDone,
         )
     }
 }

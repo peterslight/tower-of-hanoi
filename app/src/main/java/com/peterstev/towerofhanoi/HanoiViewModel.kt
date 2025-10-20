@@ -6,14 +6,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.peterstev.towerofhanoi.states.Disk
+import com.peterstev.towerofhanoi.states.PendingMove
 import com.peterstev.towerofhanoi.states.generateDisks
 import kotlinx.coroutines.launch
 
 class HanoiViewModel : ViewModel() {
 
+    var diskCount = 3
     private val _sticks = mutableStateOf(
         listOf(
-            generateDisks(3),
+            generateDisks(diskCount),
             mutableListOf(),
             mutableListOf()
         )
@@ -21,7 +23,7 @@ class HanoiViewModel : ViewModel() {
     val sticks: State<List<List<Disk>>> get() = _sticks
     private val _selectedStick = mutableStateOf<Int?>(null)
 
-    private val _movingDisk = mutableStateOf<Disk?>(null)
+    val pendingMove = mutableStateOf<PendingMove?>(null)
 
     private val _steps = mutableIntStateOf(0)
     val steps: State<Int> = _steps
@@ -36,18 +38,18 @@ class HanoiViewModel : ViewModel() {
         viewModelScope.launch {
             if (_selectedStick.value == null) {
                 _selectedStick.value = index
-            } else {
-                val from = _selectedStick.value!!
-                if (from != index) {
-                    val success = tryMoveDisk(from, index)
-                    if (!success) {
-                        _errorMessage.value = "Cannot place larger disk on top of smaller disk"
-                    } else {
-                        resetError()
-                    }
-                }
-                _selectedStick.value = null
+                return@launch
             }
+            val from = _selectedStick.value!!
+            if (from != index) {
+                val success = tryMoveDisk(from, index)
+                if (!success) {
+                    _errorMessage.value = "Cannot place larger disk on top of smaller disk"
+                } else {
+                    resetError()
+                }
+            }
+            _selectedStick.value = null
         }
     }
 
@@ -55,17 +57,19 @@ class HanoiViewModel : ViewModel() {
         _errorMessage.value = null
     }
 
-    fun resetGame(diskCount: Int = 3) {
+    fun resetGame(count: Int? = null) {
         viewModelScope.launch {
             _sticks.value = listOf(
-                generateDisks(diskCount),
+                generateDisks(count ?: diskCount),
                 mutableListOf(),
                 mutableListOf()
             )
+            count?.let { diskCount = it }
             _selectedStick.value = null
             _steps.intValue = 0
             _errorMessage.value = null
             _gameWon.value = false
+            pendingMove.value = null
         }
     }
 
@@ -91,27 +95,39 @@ class HanoiViewModel : ViewModel() {
 
     private fun tryMoveDisk(from: Int, to: Int): Boolean {
         val sticksCopy = _sticks.value.map { it.toMutableList() }.toMutableList()
-        if (from == to || sticksCopy[from].isEmpty()) {
-            return false
-        }
+        if (from == to || sticksCopy[from].isEmpty()) return false
 
         val diskToMove = sticksCopy[from].first()
         val targetTopDisk = sticksCopy[to].firstOrNull()
 
-        if (targetTopDisk != null && diskToMove.text > targetTopDisk.text) {
-            return false
-        }
 
-        val disk = sticksCopy[from].removeAt(0)
+        if (targetTopDisk != null && diskToMove.text > targetTopDisk.text) return false
 
-        _movingDisk.value = disk
-        viewModelScope.launch {
-            sticksCopy[to].add(0, disk)
-            _sticks.value = sticksCopy
-            _movingDisk.value = null
-            _steps.intValue++
-            checkWin()
-        }
+        pendingMove.value = PendingMove(
+            diskId = diskToMove.id,
+            from = from,
+            to = to,
+            targetTowerDiskCount = sticksCopy[to].size
+        )
         return true
+    }
+
+    fun commitPendingMove() {
+        val move = pendingMove.value ?: return
+        val sticksCopy = _sticks.value.map { it.toMutableList() }.toMutableList()
+
+        val fromStack = sticksCopy[move.from]
+        if (fromStack.isEmpty() || fromStack.first().id != move.diskId) {
+            pendingMove.value = null
+            return
+        }
+
+        val disk = fromStack.removeAt(0)
+        sticksCopy[move.to].add(0, disk)
+        _sticks.value = sticksCopy
+
+        _steps.intValue++
+        checkWin()
+        pendingMove.value = null
     }
 }
